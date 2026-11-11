@@ -1,0 +1,34 @@
+; 大題一 Part B 參考解答：9 條指令，約 102.5 週期 / word。
+;
+; 起始檔的錯：
+;   1. jmp !y skip 讓 0 被跳過、1 被數到 —— 數成了 1 的個數，極性反了。
+;   2. set x, 31 開始用 jmp x-- 往下數，最後 ~x 不會等於次數；要從 0xFFFFFFFF 開始（mov x, ~null），
+;      ~(0xFFFFFFFF - k) = k。
+;
+; 優化的關鍵：「數 0」比「數 1」難優化。
+;   數 1 時，1-bit 可以用 jmp x-- loop 直接回迴圈：就算最後一個 bit 是 1、多跑一次 out，
+;   空的 OSR 移出來的是 0，會走 0 的路徑被 !osre 擋下，迴圈一定會結束。
+;   數 0 時如果照抄，多跑的那次 out 移出 0 又被數到，迴圈永遠不會結束。
+; 所以先用一條 mov osr, ~osr 把資料反相：「d 的 0 的個數」=「~d 的 1 的個數」，
+; 之後就是數 1 的最佳迴圈（每個 bit 3 週期）。
+;
+; 對照：不反相、0-bit 走 4 週期的寫法是 8 條指令、約 117 週期（效率 4 + 4 = 8 分）；
+;       本解是 9 條、約 102.5 週期（6 + 4 = 10 分）。
+
+.program xnorpop
+.out_shift right
+.in_shift left
+
+.wrap_target
+    pull
+    mov osr, ~osr         ; 數 d 的 0 = 數 ~d 的 1
+    mov x, ~null          ; x = 0xFFFFFFFF
+loop:
+    out y, 1
+    jmp !y zero
+    jmp x-- loop          ; 1-bit：減 1、直接回迴圈（x 不會是 0，必定跳）
+zero:
+    jmp !osre loop
+    mov isr, ~x           ; ~(0xFFFFFFFF - k) = k
+    push
+.wrap

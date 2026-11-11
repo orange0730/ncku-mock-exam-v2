@@ -1,0 +1,25 @@
+; 大題一 Part B：要修改的 PIO 程式（eBNN 的 XNOR-popcount 加速器）。
+;
+; CPU 先算好 d = a XOR w（一條指令），把 d 送進 TX FIFO。
+; 對每個輸入 d，輸出一個 word：d 裡「0」的個數（= a 與 w 相同的位數 = popcount(XNOR(a, w))）。
+;
+; 這是學長留下的版本：組譯得過、跑得起來，但數出來的東西不對。
+; 先修到正確，再想辦法壓低週期數。用 common/pio_sim.py 測：
+;   python ../common/pio_sim.py xnorpop.pio 0x0 0xFFFFFFFF 0xF0 --schedule fast
+
+.program xnorpop
+.out_shift right
+.in_shift left
+
+.wrap_target
+    pull
+    set x, 31             ; 計數器
+loop:
+    out y, 1
+    jmp !y skip           ; 這個 bit 是 0 就跳過
+    jmp x-- skip
+skip:
+    jmp !osre loop
+    mov isr, ~x
+    push
+.wrap
