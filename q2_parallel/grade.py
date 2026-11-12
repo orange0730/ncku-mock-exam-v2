@@ -23,6 +23,7 @@ import model  # noqa: E402
 from clib import BuildError, build_and_load  # noqa: E402
 from fakeros import fresh_graph, use_fake_ros  # noqa: E402
 from guard import guarded  # noqa: E402
+import hints  # noqa: E402
 from report import Rows, emit, isolated  # noqa: E402
 
 FULL = 0xFFFFFFFF
@@ -264,8 +265,11 @@ def main():
     parser.add_argument('--firmware', default=str(HERE / 'firmware.c'))
     parser.add_argument('--coordinator', default=str(HERE / 'coordinator.py'))
     parser.add_argument('--json', action='store_true')
+    hints.add_args(parser)
     args = parser.parse_args()
-    emit(grade(args.firmware, args.coordinator), 'Q2', args.json)
+    result = grade(args.firmware, args.coordinator)
+    emit(result, 'Q2', args.json)
+    hints.maybe_show(result, 'Q2', args)
     return 0
 
 

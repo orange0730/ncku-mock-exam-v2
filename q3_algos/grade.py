@@ -28,6 +28,7 @@ import algos_ref  # noqa: E402
 from clib import BuildError, build_and_load  # noqa: E402
 from fakeros import fresh_graph, use_fake_ros  # noqa: E402
 from guard import guarded, guarded_bytes  # noqa: E402
+import hints  # noqa: E402
 from report import Rows, emit, isolated  # noqa: E402
 
 ERROR_FILE = Path(tempfile.gettempdir()) / f'ncku_engine_error_{os.getpid()}.txt'
@@ -330,8 +331,11 @@ def main():
     parser.add_argument('--algos', default=str(HERE / 'algos.c'))
     parser.add_argument('--dispatcher', default=str(HERE / 'dispatcher.py'))
     parser.add_argument('--json', action='store_true')
+    hints.add_args(parser)
     args = parser.parse_args()
-    emit(grade(args.algos, args.dispatcher), 'Q3', args.json)
+    result = grade(args.algos, args.dispatcher)
+    emit(result, 'Q3', args.json)
+    hints.maybe_show(result, 'Q3', args)
     return 0
 
 

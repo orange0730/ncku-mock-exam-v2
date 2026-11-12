@@ -8,10 +8,11 @@
 
 ## 先讀這個
 
-1. **考前先讀** [`reading/`](reading/00_總覽與讀書計畫.md)，第 04 份是去年題型的背景
+1. **考前先讀** [`reading/`](reading/00_總覽與讀書計畫.md)，第 04 份是去年題型的背景，第 05 份是[除錯檢查清單](reading/05_除錯檢查清單.md)
 2. 照下面「設定」把 repo 和 CI hook 裝好
 3. 計時 **3 小時**寫三個大題，每修好一件事就 commit 一次，讓 CI 告訴你分數
-4. 最後才看 [`solutions/解說.md`](solutions/解說.md)
+4. 卡住時用 `--hint` 要分級提示（見下方），**不要問 AI**，練的就是自己找錯的能力
+5. 最後才看 [`solutions/解說.md`](solutions/解說.md)
 
 ## 三個大題
 
@@ -69,6 +70,16 @@ python3 grade_all.py --detail           # 三題總分
 python3 ci/run_ci.py --message "Q3"     # 模擬某個 commit 訊息
 python3 selftest.py                     # 檢查評分程式本身（參考解答應拿滿分）
 ```
+
+## 卡住時：分級提示
+
+```bash
+python3 q1_ebnn/grade.py --hint                      # 第 1 級：是哪一類錯
+python3 q1_ebnn/grade.py --hint 2                    # 第 2 級：在哪裡
+python3 q1_ebnn/grade.py --hint 3 --item bnn_hidden  # 第 3 級：怎麼改（只看某一項）
+```
+
+先只要第 1 級，搭配 [除錯檢查清單](reading/05_除錯檢查清單.md) 自己找；還是卡住才往上要。每次查看都會記在 `ci/results/hints.csv`，CI 輸出會顯示累計次數。練習的目標是這個數字一輪比一輪少。提示原文在 `solutions/hints_src.py`（寫完再看）。
 
 ## 在真的 ROS 2 上跑（選用）
 

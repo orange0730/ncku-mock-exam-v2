@@ -71,5 +71,6 @@ response = [header（原樣送回）, bits]    bits: 神經元 first..first+coun
 
 ```bash
 python3 grade.py
+python3 grade.py --hint                           # 卡住時：第 1 級提示（--hint 2、--hint 3 更具體）
 git commit -am "Q2: pipeline + 依速度切分"
 ```

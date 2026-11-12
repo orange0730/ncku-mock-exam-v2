@@ -87,6 +87,13 @@ def main():
         print(f"│  ── {q} 得分 {result['total']}/{result['max']}")
         summary.append((q, result['total']))
     line = '  '.join(f'{q}={"ERR" if s is None else s}' for q, s in summary)
+    sys.path.insert(0, str(ROOT / 'common'))
+    import hints
+    used, l3 = hints.usage_summary()
+    if used:
+        print(f'│  （累計看了 {used} 項提示，其中第 3 級 {l3} 項）')
+    else:
+        print('│  （卡住時可以用 python3 qN_xxx/grade.py --hint 要提示，不用問 AI）')
     print(f'└─ pipeline 完成：{line}（詳細結果：ci/results/{stamp}-{sha}-*.json）\n')
     return 0
 

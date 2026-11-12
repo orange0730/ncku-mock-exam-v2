@@ -60,5 +60,6 @@ sniffer 的提示：sniffer 算的是「不反射、MSB-first」的 CRC-32，但
 
 ```bash
 python3 grade.py
+python3 grade.py --hint                           # 卡住時：第 1 級提示（--hint 2、--hint 3 更具體）
 git commit -am "Q3: radix sort + 查表 CRC"
 ```

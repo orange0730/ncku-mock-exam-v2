@@ -21,6 +21,7 @@ from clib import BuildError, build_and_load  # noqa: E402
 from guard import guarded  # noqa: E402
 from fakeros import fresh_graph, use_fake_ros  # noqa: E402
 from pio_sim import PioError, assemble, run  # noqa: E402
+import hints  # noqa: E402
 from report import Rows, emit, isolated  # noqa: E402
 
 MASK32 = 0xFFFFFFFF
@@ -297,8 +298,11 @@ def main():
     parser.add_argument('--pio', default=str(HERE / 'xnorpop.pio'))
     parser.add_argument('--node', default=str(HERE / 'ebnn_node.py'))
     parser.add_argument('--json', action='store_true')
+    hints.add_args(parser)
     args = parser.parse_args()
-    emit(grade(args.bnn, args.pio, args.node), 'Q1', args.json)
+    result = grade(args.bnn, args.pio, args.node)
+    emit(result, 'Q1', args.json)
+    hints.maybe_show(result, 'Q1', args)
     return 0
 
 

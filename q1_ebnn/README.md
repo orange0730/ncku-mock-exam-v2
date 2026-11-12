@@ -80,5 +80,6 @@ python3 ../common/pio_sim.py xnorpop.pio 0x5 --trace               # 逐 tick �
 
 ```bash
 python3 grade.py                                  # 本題
+python3 grade.py --hint                           # 卡住時：第 1 級提示（--hint 2、--hint 3 更具體）
 git commit -am "Q1: 修好 popcount"                # 或：commit 觸發 CI（先裝 hook，見根目錄 README）
 ```
