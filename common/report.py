@@ -78,7 +78,11 @@ def isolated(fn, *args, timeout=60):
         proc.kill()
         proc.join()
     if status == 'crash' or (status != 'timeout' and proc.exitcode not in (0, None) and status != 'ok'):
-        return 'crash', f'程式異常結束（exit code {proc.exitcode}，可能是存取錯誤記憶體或無窮遞迴）'
+        hint = ('SIGSEGV：讀寫了不該碰的記憶體，最常見是陣列越界，例如迴圈多跑一次、n = 0 時 n - 1 變成極大值'
+                if proc.exitcode == -11 else
+                'SIGABRT：程式自己中止（例如搬運引擎拒絕了不合法的工作）' if proc.exitcode == -6 else
+                '可能是存取錯誤記憶體或無窮遞迴')
+        return 'crash', f'程式當掉了（exit code {proc.exitcode}，{hint}）'
     if status == 'timeout':
         return 'timeout', f'超過 {timeout} 秒沒有結束（無窮迴圈？演算法太慢？）'
     return status, value

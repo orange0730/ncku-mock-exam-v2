@@ -15,6 +15,9 @@
  * 回傳值：成功回傳回應的 word 數（2）；請求不合法時回傳 -1，且不得寫入 resp：
  *   n != 3、count == 0、count > 32、first + count > 32。
  *
+ * 記憶體：req 只保證有 n 個 word（n 可能小於 3！先檢查 n 再讀 req[1]、req[2]），
+ *         resp 只保證有 2 個 word。評分時多讀、多寫一格都會讓程式當掉。
+ *
  * 第一層的計算請直接呼叫大題一的 bnn_hidden()（評分時會連結你的 q1_ebnn/bnn.c）。
  */
 #ifndef FIRMWARE_H

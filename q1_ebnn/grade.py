@@ -18,6 +18,7 @@ sys.path.insert(0, str(HERE))
 
 import model  # noqa: E402
 from clib import BuildError, build_and_load  # noqa: E402
+from guard import guarded  # noqa: E402
 from fakeros import fresh_graph, use_fake_ros  # noqa: E402
 from pio_sim import PioError, assemble, run  # noqa: E402
 from report import Rows, emit, isolated  # noqa: E402
@@ -39,13 +40,26 @@ def _load(source):
     return lib
 
 
-def _img(v):
-    return (ctypes.c_uint32 * 2)(v & MASK32, v >> 32)
+class Buffers:
+    """影像（2 個 word）與分數（10 個 int32）都緊貼守護頁：多讀或多寫一格就會當掉。"""
+
+    def __init__(self):
+        self.img = guarded(ctypes.c_uint32, 2)
+        self.scores = guarded(ctypes.c_int32, 10)
+
+    def image(self, v):
+        self.img[0], self.img[1] = v & MASK32, v >> 32
+        return self.img
+
+    def fresh_scores(self):
+        self.scores[:] = [0x5A5A5A5A] * 10
+        return self.scores
 
 
 def c_part(test, source):
     """在子 process 裡跑一組 C 測試，回傳 None（通過）或第一個錯誤的說明。"""
     lib = _load(source)
+    buf = Buffers()
     rng = random.Random(116)
     if test == 'popcount':
         values = [0, MASK32, 1, 0x80000000, 0x7FFFFFFF, 0xAAAAAAAA] + [rng.getrandbits(32) for _ in range(3000)]
@@ -56,12 +70,12 @@ def c_part(test, source):
     elif test == 'hidden':
         images = [img for img, _ in model.dataset(300)] + [rng.getrandbits(64) for _ in range(300)] + [0, (1 << 64) - 1]
         for v in images:
-            got, want = lib.bnn_hidden(_img(v)), model.hidden(v)
+            got, want = lib.bnn_hidden(buf.image(v)), model.hidden(v)
             if got != want:
                 return f'影像 0x{v:016X}：期望 hidden=0x{want:08X}，實際 0x{got:08X}'
     elif test == 'scores':
         for h in [0, MASK32, 0b111, 0x80000000] + [rng.getrandbits(32) for _ in range(1000)]:
-            out = (ctypes.c_int32 * 10)()
+            out = buf.fresh_scores()
             lib.bnn_scores(h, out)
             if list(out) != model.scores_from_hidden(h):
                 return f'hidden=0x{h:08X}：期望 {model.scores_from_hidden(h)}，實際 {list(out)}'
@@ -69,8 +83,8 @@ def c_part(test, source):
         data = model.dataset(1000)
         ties = 0
         for v, _ in data:
-            out = (ctypes.c_int32 * 10)()
-            got = lib.bnn_infer(_img(v), out)
+            out = buf.fresh_scores()
+            got = lib.bnn_infer(buf.image(v), out)
             want, scores = model.infer(v)
             ties += scores.count(max(scores)) > 1
             if got != want or list(out) != scores:
@@ -79,8 +93,7 @@ def c_part(test, source):
         data = model.dataset(1000, seed=7)
         correct = 0
         for v, label in data:
-            out = (ctypes.c_int32 * 10)()
-            correct += lib.bnn_infer(_img(v), out) == label
+            correct += lib.bnn_infer(buf.image(v), buf.fresh_scores()) == label
         want = sum(model.infer(v)[0] == label for v, label in data)
         if correct != want:
             return f'1000 張含雜訊的數字答對 {correct} 張，參考模型答對 {want} 張'

@@ -27,6 +27,7 @@ for p in (COMMON, HERE):
 import algos_ref  # noqa: E402
 from clib import BuildError, build_and_load  # noqa: E402
 from fakeros import fresh_graph, use_fake_ros  # noqa: E402
+from guard import guarded, guarded_bytes  # noqa: E402
 from report import Rows, emit, isolated  # noqa: E402
 
 ERROR_FILE = Path(tempfile.gettempdir()) / f'ncku_engine_error_{os.getpid()}.txt'
@@ -55,9 +56,9 @@ def c_part(test, source):
         cases += [[rng.choice((0, 1, 0xFFFFFFFF, rng.getrandbits(32), rng.randrange(10))) for _ in range(rng.randint(0, 600))]
                   for _ in range(60)]
         for case in cases:
-            arr = (ctypes.c_uint32 * max(len(case), 1))(*case)
+            arr = guarded(ctypes.c_uint32, len(case), case)     # 陣列後面緊貼守護頁
             lib.sort_u32(arr, len(case))
-            if list(arr)[:len(case)] != sorted(case):
+            if list(arr) != sorted(case):
                 head = case[:8]
                 return f'n={len(case)}（開頭 {head}…）排序結果不正確'
         return None
@@ -78,8 +79,9 @@ def c_part(test, source):
         lengths = [0, 1, 3, 55, 56, 57, 63, 64, 65, 119, 120, 127, 128, 1000] + [rng.randint(0, 300) for _ in range(150)]
         for n in lengths:
             msg = bytes(rng.getrandbits(8) for _ in range(n)) if n != 3 else b'abc'
-            out = (ctypes.c_uint8 * 20)()
-            lib.sha0(msg, n, out)
+            ptr, _keep = guarded_bytes(msg)
+            out = guarded(ctypes.c_uint8, 20)
+            lib.sha0(ptr, n, out)
             got, want = bytes(out), algos_ref.sha0(msg)
             if got != want:
                 hint = '（這是 SHA-1 的結果！）' if got == algos_ref.sha1(msg) else ''
@@ -90,7 +92,8 @@ def c_part(test, source):
             return f'"123456789" 的 CRC-32 應是 cbf43926，實際 {lib.crc32_sw(b"123456789", 9):08x}'
         for n in [0, 1, 2, 3, 100] + [rng.randint(0, 5000) for _ in range(100)]:
             msg = bytes(rng.getrandbits(8) for _ in range(n))
-            got, want = lib.crc32_sw(msg, n), zlib.crc32(msg)
+            ptr, _keep = guarded_bytes(msg)
+            got, want = lib.crc32_sw(ptr, n), zlib.crc32(msg)
             if got != want:
                 return f'長度 {n}：期望 {want:08x}，實際 {got:08x}'
         return None
@@ -111,10 +114,9 @@ def c_part(test, source):
     if test == 'crc_dma':
         total = 0
         for n in [1, 2, 3, 4, 5, 7, 8, 100, 1001, 4096] + [rng.randint(1, 3000) for _ in range(20)] + [0]:
-            buf = ctypes.create_string_buffer(bytes(rng.getrandbits(8) for _ in range(n)), n + 8)
-            off = rng.randrange(4) if n else 0
-            view = ctypes.string_at(ctypes.addressof(buf), n + off)[off:]
-            ptr = ctypes.cast(ctypes.addressof(buf) + off, ctypes.c_char_p)
+            view = bytes(rng.getrandbits(8) for _ in range(n))
+            ptr, arr = guarded_bytes(view)      # 資料結尾緊貼守護頁；起始位址隨 n 而不對齊
+            off = ctypes.addressof(arr) % 4
             got, want = lib.crc32_dma(ptr, n), zlib.crc32(view)
             total += n
             if got != want:

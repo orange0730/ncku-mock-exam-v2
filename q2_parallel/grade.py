@@ -22,6 +22,7 @@ for p in (COMMON, HERE):
 import model  # noqa: E402
 from clib import BuildError, build_and_load  # noqa: E402
 from fakeros import fresh_graph, use_fake_ros  # noqa: E402
+from guard import guarded  # noqa: E402
 from report import Rows, emit, isolated  # noqa: E402
 
 FULL = 0xFFFFFFFF
@@ -59,8 +60,10 @@ def _fw(firmware, bnn):
     lib.fw_handle.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
 
     def call(req):
-        arr = (ctypes.c_uint32 * max(len(req), 1))(*req)
-        resp = (ctypes.c_uint32 * 4)(*([SENTINEL] * 4))
+        # req 剛好 n 個 word、resp 剛好 2 個 word，後面都緊貼守護頁：
+        # 還沒檢查 n 就去讀 req[1]、或寫到 resp[2]，程式會立刻當掉。
+        arr = guarded(ctypes.c_uint32, len(req), req)
+        resp = guarded(ctypes.c_uint32, 2, [SENTINEL] * 2)
         return lib.fw_handle(arr, len(req), resp), list(resp)
     return call
 
@@ -89,7 +92,7 @@ def fw_part(test, firmware, bnn):
                  ([0x0000FF01, img & FULL, img >> 32], 'first = 255')]
         for req, label in cases:
             rc, resp = call(req)
-            if rc != -1 or resp != [SENTINEL] * 4:
+            if rc != -1 or resp != [SENTINEL] * 2:
                 return f'不合法的請求（{label}）：期望回傳 -1 且不寫 resp，實際 rc={rc}、resp 被改成 {[hex(v) for v in resp[:2]]}'
     elif test == 'full':
         for _ in range(50):
